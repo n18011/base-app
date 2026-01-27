@@ -1,0 +1,22 @@
+# Rust
+/app/target/
+/app/Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kubernetes secrets (never commit)
+**/secrets.yaml
+**/secret.yaml
+*.secret.yaml
+
+# Local environment
+.env
+.env.local
