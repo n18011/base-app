@@ -19,7 +19,25 @@ spec:
             - name: VAULT_ADDR
               value: "http://vault.vault.svc.cluster.local:8200"
             - name: VAULT_TOKEN
-              value: "root-token-dev"
+              valueFrom:
+                secretKeyRef:
+                  name: vault-config
+                  key: root-token
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-init-credentials
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-init-credentials
+                  key: password
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-init-credentials
+                  key: database
           command:
             - /bin/sh
             - -c
@@ -36,9 +54,9 @@ spec:
 
               echo "Creating PostgreSQL secrets..."
               vault kv put secret/postgresql \
-                POSTGRES_USER=accounting \
-                POSTGRES_PASSWORD=accounting-secure-password \
-                POSTGRES_DB=accounting \
+                POSTGRES_USER="${POSTGRES_USER}" \
+                POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+                POSTGRES_DB="${POSTGRES_DB}" \
                 POSTGRES_HOST=postgresql.default.svc.cluster.local \
                 POSTGRES_PORT=5432
 

@@ -5,3 +5,11 @@ resources:
   - ../../../base/external-secrets
 
 namespace: external-secrets
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+secretGenerator:
+  - name: vault-token
+    literals:
+      - token=dev-root-token-change-in-production

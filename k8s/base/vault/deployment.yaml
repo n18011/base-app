@@ -25,7 +25,10 @@ spec:
               name: http
           env:
             - name: VAULT_DEV_ROOT_TOKEN_ID
-              value: "root-token-dev"
+              valueFrom:
+                secretKeyRef:
+                  name: vault-config
+                  key: root-token
             - name: VAULT_DEV_LISTEN_ADDRESS
               value: "0.0.0.0:8200"
             - name: VAULT_ADDR

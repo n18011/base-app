@@ -5,3 +5,16 @@ resources:
   - ../../../base/vault
 
 namespace: vault
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+secretGenerator:
+  - name: vault-config
+    literals:
+      - root-token=dev-root-token-change-in-production
+  - name: postgresql-init-credentials
+    literals:
+      - username=accounting
+      - password=dev-password-change-in-production
+      - database=accounting
