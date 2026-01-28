@@ -1,9 +1,10 @@
-.PHONY: help prerequisites cluster argocd setup build build-all load load-all deploy deploy-all dev dev-all status logs argocd-ui sync clean-app clean-argocd clean
+.PHONY: help prerequisites cluster argocd setup build build-all load load-all deploy deploy-all dev dev-all status logs argocd-ui sync clean-app clean-argocd clean external-secrets infra-deploy infra-status vault-logs postgresql-logs
 
 # Configuration
 CLUSTER_NAME := base-app
 ARGOCD_NAMESPACE := argocd
 SERVICES := base-app echo-service
+INFRA := vault external-secrets-config postgresql
 
 # Default service (can be overridden with SERVICE=xxx)
 SERVICE ?= base-app
@@ -72,9 +73,11 @@ argocd: ## Install ArgoCD
 setup: cluster argocd ## Full setup (cluster + ArgoCD)
 	@echo ""
 	@echo "Setup complete! Next steps:"
-	@echo "  1. make build-all  - Build all service images"
-	@echo "  2. make load-all   - Load images into kind"
-	@echo "  3. make deploy-all - Deploy via ArgoCD"
+	@echo "  1. make external-secrets  - Install External Secrets Operator"
+	@echo "  2. make infra-deploy      - Deploy infrastructure (Vault, ESO config, PostgreSQL)"
+	@echo "  3. make build-all         - Build all service images"
+	@echo "  4. make load-all          - Load images into kind"
+	@echo "  5. make deploy-all        - Deploy services via ArgoCD"
 
 ##@ Development (Single Service)
 build: ## Build Docker image for SERVICE
@@ -118,6 +121,53 @@ deploy-all: ## Apply all ArgoCD Applications
 dev-all: build-all load-all ## Development cycle for all services
 	@echo ""
 	@echo "Development build complete for all services!"
+
+##@ Infrastructure
+external-secrets: ## Install External Secrets Operator via Helm
+	@echo "Installing External Secrets Operator..."
+	@helm repo add external-secrets https://charts.external-secrets.io 2>/dev/null || true
+	@helm repo update
+	@helm upgrade --install external-secrets external-secrets/external-secrets \
+		-n external-secrets --create-namespace \
+		--set installCRDs=true \
+		--wait
+	@echo "External Secrets Operator installed!"
+
+infra-deploy: ## Deploy infrastructure (Vault, ESO config, PostgreSQL)
+	@echo "Deploying infrastructure components..."
+	@echo "Step 1: Deploying Vault..."
+	@kubectl apply -f argocd/applications/vault.yaml
+	@echo "Waiting for Vault to be ready..."
+	@sleep 10
+	@kubectl wait --for=condition=Ready pod -l app=vault -n vault --timeout=120s 2>/dev/null || echo "Vault pods not ready yet, continuing..."
+	@echo ""
+	@echo "Step 2: Deploying External Secrets configuration..."
+	@kubectl apply -f argocd/applications/external-secrets.yaml
+	@echo ""
+	@echo "Step 3: Deploying PostgreSQL..."
+	@kubectl apply -f argocd/applications/postgresql.yaml
+	@echo ""
+	@echo "Infrastructure deployment initiated!"
+	@echo "Run 'make infra-status' to check status"
+
+infra-status: ## Show infrastructure status
+	@echo "=== Vault ==="
+	@kubectl get pods -n vault 2>/dev/null || echo "Vault namespace not found"
+	@echo ""
+	@echo "=== External Secrets ==="
+	@kubectl get pods -n external-secrets 2>/dev/null || echo "External Secrets namespace not found"
+	@kubectl get clustersecretstores 2>/dev/null || echo "No ClusterSecretStores found"
+	@echo ""
+	@echo "=== PostgreSQL ==="
+	@kubectl get pods -l app=postgresql 2>/dev/null || echo "PostgreSQL not found"
+	@kubectl get externalsecrets 2>/dev/null || echo "No ExternalSecrets found"
+	@kubectl get secrets postgresql-secret 2>/dev/null || echo "PostgreSQL secret not found"
+
+vault-logs: ## Show Vault logs
+	@kubectl logs -l app=vault -n vault -f --tail=100
+
+postgresql-logs: ## Show PostgreSQL logs
+	@kubectl logs -l app=postgresql -f --tail=100
 
 ##@ Operation
 status: ## Show cluster and app status
