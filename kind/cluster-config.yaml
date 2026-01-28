@@ -22,3 +22,11 @@ nodes:
       - containerPort: 30443
         hostPort: 8443
         protocol: TCP
+      # Vault UI (optional)
+      - containerPort: 30820
+        hostPort: 8200
+        protocol: TCP
+      # PostgreSQL (for local development)
+      - containerPort: 30432
+        hostPort: 5432
+        protocol: TCP
