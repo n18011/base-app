@@ -1,10 +1,12 @@
-.PHONY: help prerequisites cluster argocd setup build load deploy dev status logs argocd-ui sync clean-app clean-argocd clean
+.PHONY: help prerequisites cluster argocd setup build build-all load load-all deploy deploy-all dev dev-all status logs argocd-ui sync clean-app clean-argocd clean
 
 # Configuration
 CLUSTER_NAME := base-app
-IMAGE_NAME := base-app
-IMAGE_TAG := latest
 ARGOCD_NAMESPACE := argocd
+SERVICES := base-app echo-service
+
+# Default service (can be overridden with SERVICE=xxx)
+SERVICE ?= base-app
 
 # Colors for help
 YELLOW := \033[33m
@@ -15,7 +17,12 @@ RESET := \033[0m
 ##@ Help
 help: ## Display this help
 	@echo ""
-	@echo "Usage: make [target]"
+	@echo "Usage: make [target] [SERVICE=xxx]"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make build                  # Build base-app (default)"
+	@echo "  make build SERVICE=echo-service"
+	@echo "  make build-all              # Build all services"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; section=""} \
 		/^##@/ { section=substr($$0, 5); next } \
@@ -65,29 +72,52 @@ argocd: ## Install ArgoCD
 setup: cluster argocd ## Full setup (cluster + ArgoCD)
 	@echo ""
 	@echo "Setup complete! Next steps:"
-	@echo "  1. make build    - Build the application image"
-	@echo "  2. make load     - Load image into kind"
-	@echo "  3. make deploy   - Deploy via ArgoCD"
+	@echo "  1. make build-all  - Build all service images"
+	@echo "  2. make load-all   - Load images into kind"
+	@echo "  3. make deploy-all - Deploy via ArgoCD"
 
-##@ Development
-build: ## Build Docker image
-	@echo "Building Docker image $(IMAGE_NAME):$(IMAGE_TAG)..."
-	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -f docker/Dockerfile .
+##@ Development (Single Service)
+build: ## Build Docker image for SERVICE
+	@echo "Building Docker image $(SERVICE):latest..."
+	@docker build -t $(SERVICE):latest -f docker/$(SERVICE).Dockerfile .
 
-load: ## Load image into kind cluster
-	@echo "Loading image into kind cluster..."
-	@kind load docker-image $(IMAGE_NAME):$(IMAGE_TAG) --name $(CLUSTER_NAME)
+load: ## Load SERVICE image into kind cluster
+	@echo "Loading $(SERVICE) image into kind cluster..."
+	@kind load docker-image $(SERVICE):latest --name $(CLUSTER_NAME)
 	@echo "Image loaded successfully!"
 
-deploy: ## Apply ArgoCD Application
-	@echo "Deploying ArgoCD Application..."
-	@kubectl apply -f argocd/applications/base-app.yaml
+deploy: ## Apply ArgoCD Application for SERVICE
+	@echo "Deploying ArgoCD Application for $(SERVICE)..."
+	@kubectl apply -f argocd/applications/$(SERVICE).yaml
 	@echo "Application deployed! Check status with: make status"
 
-dev: build load ## Development cycle (build + load)
+dev: build load ## Development cycle for SERVICE (build + load)
 	@echo ""
-	@echo "Development build complete!"
-	@echo "Run 'make sync' to trigger ArgoCD sync if auto-sync is disabled"
+	@echo "Development build complete for $(SERVICE)!"
+
+##@ Development (All Services)
+build-all: ## Build all service images
+	@for svc in $(SERVICES); do \
+		echo "Building $$svc..."; \
+		docker build -t $$svc:latest -f docker/$$svc.Dockerfile . || exit 1; \
+	done
+	@echo "All services built!"
+
+load-all: ## Load all images into kind cluster
+	@for svc in $(SERVICES); do \
+		echo "Loading $$svc..."; \
+		kind load docker-image $$svc:latest --name $(CLUSTER_NAME) || exit 1; \
+	done
+	@echo "All images loaded!"
+
+deploy-all: ## Apply all ArgoCD Applications
+	@echo "Deploying all ArgoCD Applications..."
+	@kubectl apply -f argocd/applications/
+	@echo "All applications deployed! Check status with: make status"
+
+dev-all: build-all load-all ## Development cycle for all services
+	@echo ""
+	@echo "Development build complete for all services!"
 
 ##@ Operation
 status: ## Show cluster and app status
@@ -100,8 +130,8 @@ status: ## Show cluster and app status
 	@echo "=== ArgoCD Applications ==="
 	@kubectl get applications -n $(ARGOCD_NAMESPACE) 2>/dev/null || echo "No applications found"
 
-logs: ## Show application logs
-	@kubectl logs -l app=base-app -f --tail=100
+logs: ## Show logs for SERVICE
+	@kubectl logs -l app=$(SERVICE) -f --tail=100
 
 argocd-ui: ## Show ArgoCD UI URL and password
 	@echo ""
@@ -112,15 +142,22 @@ argocd-ui: ## Show ArgoCD UI URL and password
 	@kubectl -n $(ARGOCD_NAMESPACE) get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "(not ready yet)"
 	@echo ""
 
-sync: ## Trigger ArgoCD sync manually
-	@echo "Triggering ArgoCD sync..."
-	@kubectl patch application base-app -n $(ARGOCD_NAMESPACE) --type merge -p '{"operation": {"sync": {}}}'
+sync: ## Trigger ArgoCD sync for SERVICE
+	@echo "Triggering ArgoCD sync for $(SERVICE)..."
+	@kubectl patch application $(SERVICE) -n $(ARGOCD_NAMESPACE) --type merge -p '{"operation": {"sync": {}}}'
 	@echo "Sync triggered!"
 
+sync-all: ## Trigger ArgoCD sync for all applications
+	@for svc in $(SERVICES); do \
+		echo "Syncing $$svc..."; \
+		kubectl patch application $$svc -n $(ARGOCD_NAMESPACE) --type merge -p '{"operation": {"sync": {}}}' 2>/dev/null || true; \
+	done
+	@echo "All syncs triggered!"
+
 ##@ Cleanup
-clean-app: ## Delete application only
-	@echo "Deleting application..."
-	@kubectl delete -f argocd/applications/base-app.yaml --ignore-not-found
+clean-app: ## Delete all applications
+	@echo "Deleting applications..."
+	@kubectl delete -f argocd/applications/ --ignore-not-found
 	@kubectl delete -f k8s/overlays/dev --ignore-not-found
 
 clean-argocd: ## Delete ArgoCD only

@@ -4,8 +4,11 @@ kind: Kustomization
 namespace: default
 
 resources:
-  - base-app
-  - echo-service
+  - ../../../base/base-app
 
 commonLabels:
   environment: dev
+
+images:
+  - name: base-app
+    newTag: latest

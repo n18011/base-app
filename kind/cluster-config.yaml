@@ -10,9 +10,13 @@ nodes:
           kubeletExtraArgs:
             node-labels: "ingress-ready=true"
     extraPortMappings:
-      # Application port
+      # base-app
       - containerPort: 30080
         hostPort: 8080
+        protocol: TCP
+      # echo-service
+      - containerPort: 30081
+        hostPort: 8081
         protocol: TCP
       # ArgoCD UI
       - containerPort: 30443
