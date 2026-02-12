@@ -57,10 +57,16 @@ fn map_repo_error(err: RepositoryError) -> (StatusCode, Json<ErrorResponse>) {
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(msg, "VALIDATION_ERROR")),
         ),
-        RepositoryError::DatabaseError(msg) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(msg, "DATABASE_ERROR")),
-        ),
+        RepositoryError::DatabaseError(msg) => {
+            tracing::error!("Database error: {}", msg);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "An internal error occurred",
+                    "DATABASE_ERROR",
+                )),
+            )
+        }
     }
 }
 

@@ -76,7 +76,11 @@ impl AccountRepository for InMemoryAccountRepository {
             .read()
             .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
-        let mut result: Vec<Account> = accounts.values().cloned().collect();
+        let mut result: Vec<Account> = accounts
+            .values()
+            .filter(|a| a.is_active)
+            .cloned()
+            .collect();
         result.sort_by(|a, b| a.display_order.cmp(&b.display_order));
 
         Ok(result)
@@ -90,7 +94,7 @@ impl AccountRepository for InMemoryAccountRepository {
 
         let mut result: Vec<Account> = accounts
             .values()
-            .filter(|a| a.account_type == account_type)
+            .filter(|a| a.is_active && a.account_type == account_type)
             .cloned()
             .collect();
         result.sort_by(|a, b| a.display_order.cmp(&b.display_order));
