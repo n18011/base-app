@@ -3,7 +3,7 @@
 # Configuration
 CLUSTER_NAME := base-app
 ARGOCD_NAMESPACE := argocd
-SERVICES := base-app echo-service
+SERVICES := base-app echo-service accounting-service
 INFRA := vault external-secrets-config postgresql
 
 # Default service (can be overridden with SERVICE=xxx)

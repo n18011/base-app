@@ -18,6 +18,8 @@ async-trait = "0.1"
 validator = { version = "0.18", features = ["derive"] }
 lazy_static = "1"
 regex = "1"
+sqlx = { workspace = true }
+dotenvy = { workspace = true }
 
 [dev-dependencies]
 tokio-test = "0.4"

@@ -1,5 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::str::FromStr;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -28,6 +30,34 @@ impl AccountType {
     /// 貸方（Credit）で増加する科目か
     pub fn is_credit_increase(&self) -> bool {
         !self.is_debit_increase()
+    }
+}
+
+impl fmt::Display for AccountType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            AccountType::Asset => "asset",
+            AccountType::Liability => "liability",
+            AccountType::Equity => "equity",
+            AccountType::Revenue => "revenue",
+            AccountType::Expense => "expense",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl FromStr for AccountType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "asset" => Ok(AccountType::Asset),
+            "liability" => Ok(AccountType::Liability),
+            "equity" => Ok(AccountType::Equity),
+            "revenue" => Ok(AccountType::Revenue),
+            "expense" => Ok(AccountType::Expense),
+            other => Err(format!("Invalid account type: {}", other)),
+        }
     }
 }
 
@@ -101,6 +131,72 @@ impl AccountCategory {
             | AccountCategory::MissionExpense
             | AccountCategory::MaintenanceExpense
             | AccountCategory::OtherExpense => AccountType::Expense,
+        }
+    }
+}
+
+impl fmt::Display for AccountCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            AccountCategory::Cash => "cash",
+            AccountCategory::BankDeposit => "bank_deposit",
+            AccountCategory::FixedDeposit => "fixed_deposit",
+            AccountCategory::AccountsReceivable => "accounts_receivable",
+            AccountCategory::AccountsPayable => "accounts_payable",
+            AccountCategory::DepositsReceived => "deposits_received",
+            AccountCategory::Borrowings => "borrowings",
+            AccountCategory::Capital => "capital",
+            AccountCategory::RetainedSurplus => "retained_surplus",
+            AccountCategory::TitheOffering => "tithe_offering",
+            AccountCategory::ThankOffering => "thank_offering",
+            AccountCategory::SpecialOffering => "special_offering",
+            AccountCategory::BuildingOffering => "building_offering",
+            AccountCategory::InterestIncome => "interest_income",
+            AccountCategory::OtherRevenue => "other_revenue",
+            AccountCategory::PersonnelExpense => "personnel_expense",
+            AccountCategory::UtilityExpense => "utility_expense",
+            AccountCategory::CommunicationExpense => "communication_expense",
+            AccountCategory::SuppliesExpense => "supplies_expense",
+            AccountCategory::WorshipExpense => "worship_expense",
+            AccountCategory::EducationExpense => "education_expense",
+            AccountCategory::MissionExpense => "mission_expense",
+            AccountCategory::MaintenanceExpense => "maintenance_expense",
+            AccountCategory::OtherExpense => "other_expense",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl FromStr for AccountCategory {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "cash" => Ok(AccountCategory::Cash),
+            "bank_deposit" => Ok(AccountCategory::BankDeposit),
+            "fixed_deposit" => Ok(AccountCategory::FixedDeposit),
+            "accounts_receivable" => Ok(AccountCategory::AccountsReceivable),
+            "accounts_payable" => Ok(AccountCategory::AccountsPayable),
+            "deposits_received" => Ok(AccountCategory::DepositsReceived),
+            "borrowings" => Ok(AccountCategory::Borrowings),
+            "capital" => Ok(AccountCategory::Capital),
+            "retained_surplus" => Ok(AccountCategory::RetainedSurplus),
+            "tithe_offering" => Ok(AccountCategory::TitheOffering),
+            "thank_offering" => Ok(AccountCategory::ThankOffering),
+            "special_offering" => Ok(AccountCategory::SpecialOffering),
+            "building_offering" => Ok(AccountCategory::BuildingOffering),
+            "interest_income" => Ok(AccountCategory::InterestIncome),
+            "other_revenue" => Ok(AccountCategory::OtherRevenue),
+            "personnel_expense" => Ok(AccountCategory::PersonnelExpense),
+            "utility_expense" => Ok(AccountCategory::UtilityExpense),
+            "communication_expense" => Ok(AccountCategory::CommunicationExpense),
+            "supplies_expense" => Ok(AccountCategory::SuppliesExpense),
+            "worship_expense" => Ok(AccountCategory::WorshipExpense),
+            "education_expense" => Ok(AccountCategory::EducationExpense),
+            "mission_expense" => Ok(AccountCategory::MissionExpense),
+            "maintenance_expense" => Ok(AccountCategory::MaintenanceExpense),
+            "other_expense" => Ok(AccountCategory::OtherExpense),
+            other => Err(format!("Invalid account category: {}", other)),
         }
     }
 }
@@ -248,6 +344,38 @@ mod tests {
             AccountCategory::PersonnelExpense.account_type(),
             AccountType::Expense
         );
+    }
+
+    #[test]
+    fn test_account_type_display_and_from_str() {
+        let types = vec![
+            (AccountType::Asset, "asset"),
+            (AccountType::Liability, "liability"),
+            (AccountType::Equity, "equity"),
+            (AccountType::Revenue, "revenue"),
+            (AccountType::Expense, "expense"),
+        ];
+        for (variant, expected) in types {
+            assert_eq!(variant.to_string(), expected);
+            assert_eq!(AccountType::from_str(expected).unwrap(), variant);
+        }
+        assert!(AccountType::from_str("invalid").is_err());
+    }
+
+    #[test]
+    fn test_account_category_display_and_from_str() {
+        let categories = vec![
+            (AccountCategory::Cash, "cash"),
+            (AccountCategory::BankDeposit, "bank_deposit"),
+            (AccountCategory::TitheOffering, "tithe_offering"),
+            (AccountCategory::PersonnelExpense, "personnel_expense"),
+            (AccountCategory::OtherExpense, "other_expense"),
+        ];
+        for (variant, expected) in categories {
+            assert_eq!(variant.to_string(), expected);
+            assert_eq!(AccountCategory::from_str(expected).unwrap(), variant);
+        }
+        assert!(AccountCategory::from_str("invalid").is_err());
     }
 
     #[test]
